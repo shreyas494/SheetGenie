@@ -132,8 +132,14 @@ function App() {
     setIsLoading(true);
     setErrorStatus('');
     try {
+      const headers = {};
+      if (apiKey) {
+        headers['X-Api-Key'] = apiKey;
+      }
+      
       const response = await fetch(`${API_BASE}/api/upload`, {
         method: 'POST',
+        headers: headers,
         body: formData,
       });
       

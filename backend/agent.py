@@ -397,7 +397,7 @@ def convert_pdf_to_xlsx(pdf_path: str, xlsx_path: str, api_key: str = None) -> d
         
     try:
         # 1. Upload the PDF file to Gemini Files API
-        gemini_file = client.files.upload(file=open(pdf_path, 'rb'), mime_type="application/pdf")
+        gemini_file = client.files.upload(file=pdf_path, config={"mime_type": "application/pdf"})
         
         # 2. Build prompt and instructions
         prompt = "Read this PDF, extract all tabular data, tables, and lists, and generate a Python openpyxl script to write it to Excel."

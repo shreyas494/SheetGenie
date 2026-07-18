@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+pandas
+openpyxl
+google-genai
+python-dotenv
+pywin32
+reportlab

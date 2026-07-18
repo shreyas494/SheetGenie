@@ -1,0 +1,24 @@
+# Python virtual environment
+/backend/venv/
+
+# Python compiled files
+__pycache__/
+*.pyc
+
+# Local environment keys & uploads
+/backend/.env
+/backend/uploads/*
+!/backend/uploads/.gitkeep
+/backend/temp_runs/
+
+# Frontend dependencies and builds
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.svelte-kit/
+/frontend/build/
+
+# IDE / System files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

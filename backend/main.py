@@ -233,7 +233,7 @@ async def export_pdf(
             page_size=pageSize,
             fit_to_page=fitToPage,
             margins=margins,
-            show_gridlines=show_gridlines
+            show_gridlines=showGridlines
         )
         if not success or not os.path.exists(pdf_path):
             raise Exception("PDF printer failed to output a file.")

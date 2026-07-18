@@ -309,7 +309,10 @@ function App() {
       
       const url = `${API_BASE}/api/export-pdf?${queryParams.toString()}`;
       const response = await fetch(url);
-      if (!response.ok) throw new Error("PDF export failed");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || "PDF export failed");
+      }
       const blob = await response.blob();
       
       const blobUrl = window.URL.createObjectURL(blob);

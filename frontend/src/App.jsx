@@ -86,7 +86,8 @@ function App() {
     pageSize: 'letter',
     fitToPage: 'fit_width',
     margins: 'normal',
-    showGridlines: true
+    showGridlines: true,
+    copies: 1
   });
   
   const chatEndRef = useRef(null);
@@ -328,6 +329,57 @@ function App() {
   };
 
   const activeSheet = file?.metadata?.sheets?.find(s => s.name === activeSheetName);
+
+  // Print Preview Math & Scale Calculations
+  const getPageDimensions = () => {
+    const isLandscape = printOptions.orientation === 'landscape';
+    const isA4 = printOptions.pageSize === 'a4';
+    const ratio = isA4 ? 1.414 : 1.294;
+    const base = 480; // base height/width
+    
+    if (isLandscape) {
+      return { width: base, height: Math.round(base / ratio) };
+    } else {
+      return { width: Math.round(base / ratio), height: base };
+    }
+  };
+
+  const getMarginPadding = () => {
+    switch (printOptions.margins) {
+      case 'narrow': return 12; // 0.25 in
+      case 'wide': return 40;   // 1.0 in
+      case 'normal':
+      default:
+        return 28; // 0.75 in
+    }
+  };
+
+  const paperDim = getPageDimensions();
+  const marginPadding = getMarginPadding();
+  const printableWidth = paperDim.width - (marginPadding * 2);
+  const printableHeight = paperDim.height - (marginPadding * 2);
+  
+  const colCount = activeSheet?.columns?.length || 5;
+  const rowCount = Math.min(12, activeSheet?.rows?.length || 8);
+  const colWidth = 72; // estimated width in pixels
+  const rowHeight = 18; // estimated row height in pixels
+  
+  const totalTableWidth = colCount * colWidth;
+  const totalTableHeight = (rowCount + 1) * rowHeight;
+  
+  let scale = 1;
+  if (printOptions.fitToPage === 'fit_width') {
+    scale = Math.min(1, printableWidth / totalTableWidth);
+  } else if (printOptions.fitToPage === 'fit_height') {
+    scale = Math.min(1, printableHeight / totalTableHeight);
+  } else if (printOptions.fitToPage === 'fit_sheet') {
+    const scaleX = printableWidth / totalTableWidth;
+    const scaleY = printableHeight / totalTableHeight;
+    scale = Math.min(1, scaleX, scaleY);
+  }
+  
+  const hasHorizontalOverflow = totalTableWidth * scale > printableWidth + 2;
+  const hasVerticalOverflow = totalTableHeight * scale > printableHeight + 2;
 
   return (
     <div className="app-container">
@@ -613,90 +665,179 @@ function App() {
         </aside>
       )}
 
-      {/* 5. Print Settings Modal */}
+      {/* 5. Print Settings & Page Layout Hub */}
       {showPrintModal && (
         <div className="modal-overlay">
-          <div className="modal-content glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
-            <div className="modal-header">
-              <h3 className="modal-title">🖨️ PDF Print Options</h3>
-              <button className="modal-close" onClick={() => setShowPrintModal(false)}>×</button>
-            </div>
+          <div className="print-hub-content glass-panel">
             
-            <div className="form-group">
-              <label className="form-label">Orientation</label>
-              <select 
-                className="form-select" 
-                value={printOptions.orientation} 
-                onChange={(e) => setPrintOptions(prev => ({ ...prev, orientation: e.target.value }))}
-              >
-                <option value="landscape">Landscape (Wide - Recommended for spreadsheets)</option>
-                <option value="portrait">Portrait (Tall)</option>
-              </select>
-            </div>
+            {/* Left settings pane */}
+            <div className="print-hub-settings">
+              <div className="modal-header">
+                <h3 className="modal-title">🖨️ Print Setup</h3>
+                <button className="modal-close" onClick={() => setShowPrintModal(false)}>×</button>
+              </div>
 
-            <div className="form-group">
-              <label className="form-label">Paper Size</label>
-              <select 
-                className="form-select" 
-                value={printOptions.pageSize} 
-                onChange={(e) => setPrintOptions(prev => ({ ...prev, pageSize: e.target.value }))}
-              >
-                <option value="letter">Letter</option>
-                <option value="a4">A4</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Fit-to-Page Scaling</label>
-              <select 
-                className="form-select" 
-                value={printOptions.fitToPage} 
-                onChange={(e) => setPrintOptions(prev => ({ ...prev, fitToPage: e.target.value }))}
-              >
-                <option value="fit_width">Fit All Columns on 1 Page (Prevents horizontal overflow)</option>
-                <option value="none">No Scaling (Actual Size / 100%)</option>
-                <option value="fit_height">Fit All Rows on 1 Page</option>
-                <option value="fit_sheet">Fit Entire Sheet on 1 Page</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Margins</label>
-              <select 
-                className="form-select" 
-                value={printOptions.margins} 
-                onChange={(e) => setPrintOptions(prev => ({ ...prev, margins: e.target.value }))}
-              >
-                <option value="normal">Normal (0.75 in)</option>
-                <option value="narrow">Narrow (0.25 in)</option>
-                <option value="wide">Wide (1.0 in)</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-checkbox-label">
+              <div className="form-group">
+                <label className="form-label">Copies</label>
                 <input 
-                  type="checkbox" 
-                  className="form-checkbox"
-                  checked={printOptions.showGridlines}
-                  onChange={(e) => setPrintOptions(prev => ({ ...prev, showGridlines: e.target.checked }))}
+                  type="number" 
+                  min="1" 
+                  max="99"
+                  className="form-input" 
+                  value={printOptions.copies}
+                  onChange={(e) => setPrintOptions(prev => ({ ...prev, copies: parseInt(e.target.value) || 1 }))}
                 />
-                Show Excel Gridlines in PDF
-              </label>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Orientation</label>
+                <select 
+                  className="form-select" 
+                  value={printOptions.orientation} 
+                  onChange={(e) => setPrintOptions(prev => ({ ...prev, orientation: e.target.value }))}
+                >
+                  <option value="landscape">Landscape Orientation</option>
+                  <option value="portrait">Portrait Orientation</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Paper Size</label>
+                <select 
+                  className="form-select" 
+                  value={printOptions.pageSize} 
+                  onChange={(e) => setPrintOptions(prev => ({ ...prev, pageSize: e.target.value }))}
+                >
+                  <option value="letter">Letter (8.5" x 11")</option>
+                  <option value="a4">A4 (21 cm x 29.7 cm)</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Scaling Settings</label>
+                <select 
+                  className="form-select" 
+                  value={printOptions.fitToPage} 
+                  onChange={(e) => setPrintOptions(prev => ({ ...prev, fitToPage: e.target.value }))}
+                >
+                  <option value="fit_width">Fit All Columns on 1 Page</option>
+                  <option value="none">No Scaling (Actual Size)</option>
+                  <option value="fit_height">Fit All Rows on 1 Page</option>
+                  <option value="fit_sheet">Fit Sheet on 1 Page</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Margins</label>
+                <select 
+                  className="form-select" 
+                  value={printOptions.margins} 
+                  onChange={(e) => setPrintOptions(prev => ({ ...prev, margins: e.target.value }))}
+                >
+                  <option value="normal">Normal Margins (0.75")</option>
+                  <option value="narrow">Narrow Margins (0.25")</option>
+                  <option value="wide">Wide Margins (1.0")</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-checkbox-label">
+                  <input 
+                    type="checkbox" 
+                    className="form-checkbox"
+                    checked={printOptions.showGridlines}
+                    onChange={(e) => setPrintOptions(prev => ({ ...prev, showGridlines: e.target.checked }))}
+                  />
+                  Print Gridlines
+                </label>
+              </div>
+
+              <div className="modal-footer">
+                <button className="btn-secondary" onClick={() => setShowPrintModal(false)}>
+                  Cancel
+                </button>
+                <button 
+                  className="btn-primary" 
+                  onClick={handleDownloadPdf}
+                  style={{ background: 'linear-gradient(135deg, var(--error), var(--primary))', boxShadow: '0 4px 12px var(--error-glow)', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  Print to PDF
+                </button>
+              </div>
             </div>
 
-            <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setShowPrintModal(false)}>
-                Cancel
-              </button>
-              <button 
-                className="btn-primary" 
-                onClick={handleDownloadPdf}
-                style={{ background: 'linear-gradient(135deg, var(--error), var(--primary))', boxShadow: '0 4px 12px var(--error-glow)', display: 'flex', alignItems: 'center', gap: '8px' }}
+            {/* Right Stage: Visual Page Canvas Simulator */}
+            <div className="print-hub-preview">
+              {/* Overflow warning badge if content clips */}
+              {!printOptions.fitToPage.includes('fit') && (hasHorizontalOverflow || hasVerticalOverflow) && (
+                <div className="page-overflow-warning">
+                  ⚠️ <span>Warning: Content overflows page breaks and will split.</span>
+                </div>
+              )}
+
+              <div 
+                className="preview-paper" 
+                style={{ 
+                  width: `${paperDim.width}px`, 
+                  height: `${paperDim.height}px`,
+                  padding: `${marginPadding}px`
+                }}
               >
-                Confirm & Export
-              </button>
+                <div className="preview-margins">
+                  <div className="preview-table-container">
+                    {/* Visual Page Break Lines */}
+                    {!printOptions.fitToPage.includes('fit') && hasHorizontalOverflow && (
+                      <div 
+                        className="page-break-line-y" 
+                        style={{ left: `${printableWidth}px` }} 
+                        title="Horizontal Page Break"
+                      />
+                    )}
+                    {!printOptions.fitToPage.includes('fit') && hasVerticalOverflow && (
+                      <div 
+                        className="page-break-line-x" 
+                        style={{ top: `${printableHeight}px` }} 
+                        title="Vertical Page Break"
+                      />
+                    )}
+                    
+                    {/* Micro grid data preview */}
+                    <table 
+                      className={`preview-table ${printOptions.showGridlines ? 'gridlines' : ''}`}
+                      style={{ 
+                        width: `${totalTableWidth}px`,
+                        transform: `scale(${scale})`
+                      }}
+                    >
+                      <thead>
+                        <tr>
+                          {activeSheet?.columns?.map((col, idx) => (
+                            <th key={idx} style={{ width: `${colWidth}px` }}>{col}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activeSheet?.rows?.slice(0, rowCount).map((row, rIdx) => (
+                          <tr key={rIdx}>
+                            {activeSheet.columns.map((col, cIdx) => (
+                              <td key={cIdx} style={{ width: `${colWidth}px` }}>
+                                {row[col] !== undefined ? String(row[col]) : ''}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Micro Page Info Indicator */}
+              <div style={{ position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: 'var(--text-muted)' }}>
+                Page 1 of {!printOptions.fitToPage.includes('fit') && (hasHorizontalOverflow || hasVerticalOverflow) ? '2' : '1'}
+              </div>
             </div>
+
           </div>
         </div>
       )}

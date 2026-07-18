@@ -641,22 +641,25 @@ body {
   animation: fadeIn 0.2s ease-out;
 }
 
-/* Print Settings Modal Container */
-.modal-content {
+/* Print Hub Split Pane Modal Content */
+.print-hub-content {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 16px;
-  width: 90%;
-  max-width: 480px;
-  padding: 24px;
+  width: 90vw;
+  max-width: 1024px;
+  height: 85vh;
+  display: grid;
+  grid-template-columns: 340px 1fr;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
   animation: modalScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
 }
 
 @keyframes modalScaleIn {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(10px);
+    transform: scale(0.97) translateY(15px);
   }
   to {
     opacity: 1;
@@ -664,36 +667,129 @@ body {
   }
 }
 
-.modal-header {
+/* Left panel: Settings */
+.print-hub-settings {
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  padding: 24px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 12px;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
 }
 
-.modal-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
+/* Right panel: Live Page Canvas Stage */
+.print-hub-preview {
+  background: var(--bg-dark);
+  padding: 32px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  overflow: auto;
+  height: 100%;
+  position: relative;
+  box-sizing: border-box;
 }
 
-.modal-close {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 20px;
-  cursor: pointer;
-  transition: color 0.15s;
+/* Simulated Sheet of Paper */
+.preview-paper {
+  background: #ffffff;
+  color: #111827; /* Dark font color inside the printed page */
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  position: relative;
+  box-sizing: border-box;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
 
-.modal-close:hover {
-  color: var(--text-primary);
+/* Visual Margins Box */
+.preview-margins {
+  border: 1px dashed #d1d5db; /* Light gray dashed outline showing margins */
+  width: 100%;
+  height: 100%;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Table container */
+.preview-table-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: visible;
+}
+
+/* Mini Table inside Page Preview */
+.preview-table {
+  border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
+  font-size: 8px; /* Micro size for grid preview */
+  color: #374151;
+  width: 100%;
+  transform-origin: top left;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.preview-table th {
+  background: #3B82F6; /* Matching reportlab theme */
+  color: #ffffff;
+  font-weight: bold;
+  padding: 5px 8px;
+  text-align: left;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.preview-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #f3f4f6;
+  white-space: nowrap;
+  font-size: 7px;
+}
+
+.preview-table tr:nth-child(even) td {
+  background: #f9fafb;
+}
+
+/* Enable borders if showGridlines is true */
+.preview-table.gridlines td, .preview-table.gridlines th {
+  border: 1px solid #e5e7eb;
+}
+
+/* Page Break Overflows */
+.page-break-line-x {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border-top: 1px dashed var(--error);
+  z-index: 5;
+}
+
+.page-break-line-y {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-left: 1px dashed var(--error);
+  z-index: 5;
+}
+
+/* Warning overlay for overflow clipping */
+.page-overflow-warning {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid var(--error);
+  color: #fca5a5;
+  font-size: 11px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .form-group {
@@ -748,8 +844,9 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 24px;
+  margin-top: auto;
   border-top: 1px solid var(--border-color);
   padding-top: 16px;
 }
+
 

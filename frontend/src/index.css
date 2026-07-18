@@ -7,6 +7,8 @@
   --bg-primary: #0a0d16;
   --bg-secondary: #111625;
   --bg-tertiary: #171e30;
+  --bg-dark: #0a0d16;
+  --bg-surface: #171e30;
   --bg-glass: rgba(22, 28, 45, 0.6);
   --border-color: rgba(255, 255, 255, 0.08);
   --border-glow: rgba(99, 102, 241, 0.15);
@@ -814,6 +816,11 @@ body {
   font-size: 13px;
   transition: border-color 0.15s, box-shadow 0.15s;
   outline: none;
+}
+
+.form-select option {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .form-select:focus, .form-input:focus {

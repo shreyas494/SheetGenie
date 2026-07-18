@@ -556,10 +556,10 @@ def excel_to_pdf_win32(
         if fit_to_page.lower() == "fit_width":
             ws.PageSetup.Zoom = False
             ws.PageSetup.FitToPagesWide = 1
-            ws.PageSetup.FitToPagesTall = 0
+            ws.PageSetup.FitToPagesTall = False
         elif fit_to_page.lower() == "fit_height":
             ws.PageSetup.Zoom = False
-            ws.PageSetup.FitToPagesWide = 0
+            ws.PageSetup.FitToPagesWide = False
             ws.PageSetup.FitToPagesTall = 1
         elif fit_to_page.lower() == "fit_sheet":
             ws.PageSetup.Zoom = False

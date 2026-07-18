@@ -493,7 +493,16 @@ if __name__ == "__main__":
             "code": ""
         }
 
-def excel_to_pdf_win32(excel_path: str, pdf_path: str, active_sheet_name: str = None) -> bool:
+def excel_to_pdf_win32(
+    excel_path: str, 
+    pdf_path: str, 
+    active_sheet_name: str = None,
+    orientation: str = "landscape",
+    page_size: str = "letter",
+    fit_to_page: str = "none",
+    margins: str = "normal",
+    show_gridlines: bool = True
+) -> bool:
     """
     Converts Excel sheet to PDF using native COM automation (pywin32) on Windows.
     """
@@ -519,8 +528,49 @@ def excel_to_pdf_win32(excel_path: str, pdf_path: str, active_sheet_name: str = 
                 ws = wb.Sheets(active_sheet_name)
                 ws.Select()
             except Exception:
-                pass # Fallback to active sheet
-                
+                ws = wb.ActiveSheet
+        else:
+            ws = wb.ActiveSheet
+            
+        # Configure Print Setup Options
+        # Orientation: 1 = xlPortrait, 2 = xlLandscape
+        ws.PageSetup.Orientation = 2 if orientation.lower() == "landscape" else 1
+        
+        # PaperSize: 1 = xlPaperLetter, 9 = xlPaperA4
+        ws.PageSetup.PaperSize = 9 if page_size.lower() == "a4" else 1
+        
+        # Margins: convert inches to points (inches * 72)
+        margin_val = 0.75
+        if margins.lower() == "narrow":
+            margin_val = 0.25
+        elif margins.lower() == "wide":
+            margin_val = 1.0
+            
+        margin_points = excel_app.InchesToPoints(margin_val)
+        ws.PageSetup.LeftMargin = margin_points
+        ws.PageSetup.RightMargin = margin_points
+        ws.PageSetup.TopMargin = margin_points
+        ws.PageSetup.BottomMargin = margin_points
+        
+        # Fit to Page Scaling
+        if fit_to_page.lower() == "fit_width":
+            ws.PageSetup.Zoom = False
+            ws.PageSetup.FitToPagesWide = 1
+            ws.PageSetup.FitToPagesTall = 0
+        elif fit_to_page.lower() == "fit_height":
+            ws.PageSetup.Zoom = False
+            ws.PageSetup.FitToPagesWide = 0
+            ws.PageSetup.FitToPagesTall = 1
+        elif fit_to_page.lower() == "fit_sheet":
+            ws.PageSetup.Zoom = False
+            ws.PageSetup.FitToPagesWide = 1
+            ws.PageSetup.FitToPagesTall = 1
+        else: # "none"
+            ws.PageSetup.Zoom = 100
+            
+        # Gridlines
+        ws.PageSetup.PrintGridlines = bool(show_gridlines)
+        
         # 0 corresponds to xlTypePDF
         wb.ActiveSheet.ExportAsFixedFormat(0, abs_pdf)
         wb.Close(SaveChanges=False)
@@ -536,11 +586,20 @@ def excel_to_pdf_win32(excel_path: str, pdf_path: str, active_sheet_name: str = 
                 pass
         pythoncom.CoUninitialize()
 
-def excel_to_pdf_fallback(excel_path: str, pdf_path: str, active_sheet_name: str = None) -> bool:
+def excel_to_pdf_fallback(
+    excel_path: str, 
+    pdf_path: str, 
+    active_sheet_name: str = None,
+    orientation: str = "landscape",
+    page_size: str = "letter",
+    fit_to_page: str = "none",
+    margins: str = "normal",
+    show_gridlines: bool = True
+) -> bool:
     """
     Converts Excel sheet to PDF using ReportLab as a lightweight fallback.
     """
-    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib.pagesizes import letter, A4, landscape, portrait
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib import colors
@@ -569,8 +628,26 @@ def excel_to_pdf_fallback(excel_path: str, pdf_path: str, active_sheet_name: str
         if not data:
             data = [["Sheet is Empty"]]
             
-        # Setup ReportLab Document in Landscape Letter format
-        doc = SimpleDocTemplate(pdf_path, pagesize=landscape(letter), rightMargin=20, leftMargin=20, topMargin=20, bottomMargin=20)
+        # Determine Page Size and Orientation
+        base_size = A4 if page_size.lower() == "a4" else letter
+        p_size = landscape(base_size) if orientation.lower() == "landscape" else portrait(base_size)
+        
+        # Margins mapping (in points)
+        margin_val = 54 # normal 0.75 in
+        if margins.lower() == "narrow":
+            margin_val = 18 # 0.25 in
+        elif margins.lower() == "wide":
+            margin_val = 72 # 1.0 in
+            
+        # Setup ReportLab Document
+        doc = SimpleDocTemplate(
+            pdf_path, 
+            pagesize=p_size, 
+            rightMargin=margin_val, 
+            leftMargin=margin_val, 
+            topMargin=margin_val, 
+            bottomMargin=margin_val
+        )
         elements = []
         
         styles = getSampleStyleSheet()
@@ -590,22 +667,25 @@ def excel_to_pdf_fallback(excel_path: str, pdf_path: str, active_sheet_name: str
         table = Table(data)
         
         # Table Styling
-        t_style = TableStyle([
+        style_list = [
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3B82F6')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
             ('TOPPADDING', (0, 0), (-1, 0), 8),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F9FAFB')]),
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
             ('TOPPADDING', (0, 1), (-1, -1), 6),
-        ])
+        ]
         
+        if show_gridlines:
+            style_list.append(('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')))
+            
+        t_style = TableStyle(style_list)
         table.setStyle(t_style)
         elements.append(table)
         
@@ -615,14 +695,42 @@ def excel_to_pdf_fallback(excel_path: str, pdf_path: str, active_sheet_name: str
         print(f"Reportlab PDF fallback creation error: {str(e)}")
         raise e
 
-def convert_excel_to_pdf(excel_path: str, pdf_path: str, active_sheet_name: str = None) -> bool:
+def convert_excel_to_pdf(
+    excel_path: str, 
+    pdf_path: str, 
+    active_sheet_name: str = None,
+    orientation: str = "landscape",
+    page_size: str = "letter",
+    fit_to_page: str = "none",
+    margins: str = "normal",
+    show_gridlines: bool = True
+) -> bool:
     """
     Tries win32 COM conversion first, falls back to reportlab if Excel is not installed.
     """
     try:
         import win32com.client
-        return excel_to_pdf_win32(excel_path, pdf_path, active_sheet_name)
+        return excel_to_pdf_win32(
+            excel_path=excel_path,
+            pdf_path=pdf_path,
+            active_sheet_name=active_sheet_name,
+            orientation=orientation,
+            page_size=page_size,
+            fit_to_page=fit_to_page,
+            margins=margins,
+            show_gridlines=show_gridlines
+        )
     except Exception as e:
         print("Win32 PDF export failed or unavailable. Falling back to ReportLab...")
-        return excel_to_pdf_fallback(excel_path, pdf_path, active_sheet_name)
+        return excel_to_pdf_fallback(
+            excel_path=excel_path,
+            pdf_path=pdf_path,
+            active_sheet_name=active_sheet_name,
+            orientation=orientation,
+            page_size=page_size,
+            fit_to_page=fit_to_page,
+            margins=margins,
+            show_gridlines=show_gridlines
+        )
+
 

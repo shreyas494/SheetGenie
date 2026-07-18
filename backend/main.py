@@ -187,7 +187,15 @@ async def download_file(filePath: str):
     )
 
 @app.get("/api/export-pdf")
-async def export_pdf(filePath: str, sheetName: Optional[str] = None):
+async def export_pdf(
+    filePath: str, 
+    sheetName: Optional[str] = None,
+    orientation: str = "landscape",
+    pageSize: str = "letter",
+    fitToPage: str = "none",
+    margins: str = "normal",
+    showGridlines: bool = True
+):
     if not os.path.exists(filePath):
         raise HTTPException(status_code=404, detail="File not found")
         
@@ -199,7 +207,16 @@ async def export_pdf(filePath: str, sheetName: Optional[str] = None):
     
     try:
         # Convert Excel to PDF
-        success = convert_excel_to_pdf(filePath, pdf_path, sheetName)
+        success = convert_excel_to_pdf(
+            excel_path=filePath,
+            pdf_path=pdf_path,
+            active_sheet_name=sheetName,
+            orientation=orientation,
+            page_size=pageSize,
+            fit_to_page=fitToPage,
+            margins=margins,
+            show_gridlines=show_gridlines
+        )
         if not success or not os.path.exists(pdf_path):
             raise Exception("PDF printer failed to output a file.")
             

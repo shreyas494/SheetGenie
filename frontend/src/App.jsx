@@ -80,6 +80,14 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [errorStatus, setErrorStatus] = useState('');
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printOptions, setPrintOptions] = useState({
+    orientation: 'landscape',
+    pageSize: 'letter',
+    fitToPage: 'fit_width',
+    margins: 'normal',
+    showGridlines: true
+  });
   
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -283,7 +291,19 @@ function App() {
     if (!file) return;
     try {
       setIsLoading(true);
-      const url = `${API_BASE}/api/export-pdf?filePath=${encodeURIComponent(file.filePath)}&sheetName=${encodeURIComponent(activeSheetName)}`;
+      setShowPrintModal(false);
+      
+      const queryParams = new URLSearchParams({
+        filePath: file.filePath,
+        sheetName: activeSheetName,
+        orientation: printOptions.orientation,
+        pageSize: printOptions.pageSize,
+        fitToPage: printOptions.fitToPage,
+        margins: printOptions.margins,
+        showGridlines: printOptions.showGridlines.toString()
+      });
+      
+      const url = `${API_BASE}/api/export-pdf?${queryParams.toString()}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error("PDF export failed");
       const blob = await response.blob();
@@ -378,7 +398,7 @@ function App() {
             </button>
             <button 
               className="btn-primary" 
-              onClick={handleDownloadPdf} 
+              onClick={() => setShowPrintModal(true)} 
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'linear-gradient(135deg, var(--error), var(--primary))', boxShadow: '0 4px 12px var(--error-glow)' }}
             >
               <DownloadIcon /> Export PDF
@@ -591,6 +611,94 @@ function App() {
             )}
           </div>
         </aside>
+      )}
+
+      {/* 5. Print Settings Modal */}
+      {showPrintModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">🖨️ PDF Print Options</h3>
+              <button className="modal-close" onClick={() => setShowPrintModal(false)}>×</button>
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Orientation</label>
+              <select 
+                className="form-select" 
+                value={printOptions.orientation} 
+                onChange={(e) => setPrintOptions(prev => ({ ...prev, orientation: e.target.value }))}
+              >
+                <option value="landscape">Landscape (Wide - Recommended for spreadsheets)</option>
+                <option value="portrait">Portrait (Tall)</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Paper Size</label>
+              <select 
+                className="form-select" 
+                value={printOptions.pageSize} 
+                onChange={(e) => setPrintOptions(prev => ({ ...prev, pageSize: e.target.value }))}
+              >
+                <option value="letter">Letter</option>
+                <option value="a4">A4</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Fit-to-Page Scaling</label>
+              <select 
+                className="form-select" 
+                value={printOptions.fitToPage} 
+                onChange={(e) => setPrintOptions(prev => ({ ...prev, fitToPage: e.target.value }))}
+              >
+                <option value="fit_width">Fit All Columns on 1 Page (Prevents horizontal overflow)</option>
+                <option value="none">No Scaling (Actual Size / 100%)</option>
+                <option value="fit_height">Fit All Rows on 1 Page</option>
+                <option value="fit_sheet">Fit Entire Sheet on 1 Page</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Margins</label>
+              <select 
+                className="form-select" 
+                value={printOptions.margins} 
+                onChange={(e) => setPrintOptions(prev => ({ ...prev, margins: e.target.value }))}
+              >
+                <option value="normal">Normal (0.75 in)</option>
+                <option value="narrow">Narrow (0.25 in)</option>
+                <option value="wide">Wide (1.0 in)</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-checkbox-label">
+                <input 
+                  type="checkbox" 
+                  className="form-checkbox"
+                  checked={printOptions.showGridlines}
+                  onChange={(e) => setPrintOptions(prev => ({ ...prev, showGridlines: e.target.checked }))}
+                />
+                Show Excel Gridlines in PDF
+              </label>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowPrintModal(false)}>
+                Cancel
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={handleDownloadPdf}
+                style={{ background: 'linear-gradient(135deg, var(--error), var(--primary))', boxShadow: '0 4px 12px var(--error-glow)', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                Confirm & Export
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 4. Configuration settings Modal */}

@@ -604,6 +604,16 @@ def excel_to_pdf_fallback(
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib import colors
     
+    def sanitize_pdf_text(text: str) -> str:
+        if not text:
+            return ""
+        text = text.replace("₹", "Rs. ")
+        text = text.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
+        try:
+            return text.encode('latin-1', 'replace').decode('latin-1')
+        except:
+            return text
+            
     try:
         # Load the sheet using openpyxl
         wb = openpyxl.load_workbook(excel_path, data_only=True)
@@ -621,7 +631,8 @@ def excel_to_pdf_fallback(
             row_vals = []
             for c in range(1, max_c):
                 val = ws.cell(row=r, column=c).value
-                row_vals.append(str(val) if val is not None else "")
+                val_str = str(val) if val is not None else ""
+                row_vals.append(sanitize_pdf_text(val_str))
             if any(row_vals):
                 data.append(row_vals)
                 

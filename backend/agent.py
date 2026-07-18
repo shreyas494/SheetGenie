@@ -674,8 +674,50 @@ def excel_to_pdf_fallback(
         elements.append(Paragraph(f"Spreadsheet Report: {ws.title}", title_style))
         elements.append(Spacer(1, 10))
         
-        # Create Table Flowable
-        table = Table(data)
+        # Create Table Flowable with explicit column widths and Paragraph cell wrapping
+        styles = getSampleStyleSheet()
+        
+        # Normal cell style
+        cell_style = ParagraphStyle(
+            'PdfCellStyle',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=7,
+            leading=9,
+            textColor=colors.HexColor('#374151')
+        )
+        
+        # Header cell style
+        header_style = ParagraphStyle(
+            'PdfHeaderStyle',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=7,
+            leading=9,
+            textColor=colors.white
+        )
+        
+        formatted_data = []
+        # Header row
+        formatted_data.append([Paragraph(h, header_style) for h in data[0]])
+        # Data rows
+        for row in data[1:]:
+            formatted_data.append([Paragraph(cell, cell_style) for cell in row])
+            
+        # Calculate smart column widths fitting the printable area
+        num_cols = len(data[0])
+        printable_width = p_size[0] - (margin_val * 2)
+        
+        if num_cols > 1:
+            # Allocate a wider first column (typically item names or categories)
+            first_ratio = 0.25 if num_cols < 6 else (0.20 if num_cols < 10 else 0.15)
+            first_col_width = printable_width * first_ratio
+            other_col_width = (printable_width - first_col_width) / (num_cols - 1)
+            col_widths = [first_col_width] + [other_col_width] * (num_cols - 1)
+        else:
+            col_widths = [printable_width]
+            
+        table = Table(formatted_data, colWidths=col_widths, repeatRows=1)
         
         # Table Styling
         style_list = [
@@ -683,14 +725,13 @@ def excel_to_pdf_fallback(
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-            ('TOPPADDING', (0, 0), (-1, 0), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+            ('TOPPADDING', (0, 0), (-1, 0), 6),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F9FAFB')]),
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
-            ('TOPPADDING', (0, 1), (-1, -1), 6),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Align top for clean text wrapping
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+            ('TOPPADDING', (0, 1), (-1, -1), 4),
         ]
         
         if show_gridlines:

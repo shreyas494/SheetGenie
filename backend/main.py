@@ -31,7 +31,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 class ChatRequest(BaseModel):
     prompt: str
-    filePath: str
+    filePath: Optional[str] = None
+    fileId: Optional[str] = None
     chatHistory: Optional[List[dict]] = []
 
 @app.get("/api/health")
@@ -108,6 +109,7 @@ async def upload_file(file: UploadFile = File(...), x_api_key: Optional[str] = H
     # Return user-friendly filename ending in .xlsx
     user_filename = os.path.splitext(file.filename)[0] + ".xlsx"
     return {
+        "fileId": filename,
         "filePath": file_path,
         "filename": user_filename,
         "metadata": metadata
@@ -115,8 +117,13 @@ async def upload_file(file: UploadFile = File(...), x_api_key: Optional[str] = H
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest, x_api_key: Optional[str] = Header(None)):
-    file_path = request.filePath
-    if not os.path.exists(file_path):
+    file_id = request.fileId
+    if file_id:
+        file_path = os.path.join(UPLOAD_DIR, os.path.basename(file_id))
+    else:
+        file_path = request.filePath
+        
+    if not file_path or not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Excel file not found. Please upload again.")
         
     # Create an output file path (we modify in place by saving to a new temp file,
@@ -167,12 +174,17 @@ async def chat(request: ChatRequest, x_api_key: Optional[str] = Header(None)):
         }
 
 @app.get("/api/download")
-async def download_file(filePath: str):
-    if not os.path.exists(filePath):
+async def download_file(filePath: Optional[str] = None, fileId: Optional[str] = None):
+    if fileId:
+        file_path = os.path.join(UPLOAD_DIR, os.path.basename(fileId))
+    else:
+        file_path = filePath
+        
+    if not file_path or not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
         
     # Get original filename by stripping the UUID prefix (32 chars of uuid + 1 char underscore)
-    base_name = os.path.basename(filePath)
+    base_name = os.path.basename(file_path)
     if len(base_name) > 33 and base_name[32] == "_":
         original_name = base_name[33:]
     elif base_name.startswith("temp_"):
@@ -181,14 +193,15 @@ async def download_file(filePath: str):
         original_name = base_name
         
     return FileResponse(
-        filePath,
+        file_path,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename=original_name
     )
 
 @app.get("/api/export-pdf")
 async def export_pdf(
-    filePath: str, 
+    filePath: Optional[str] = None, 
+    fileId: Optional[str] = None,
     sheetName: Optional[str] = None,
     orientation: str = "landscape",
     pageSize: str = "letter",
@@ -196,19 +209,24 @@ async def export_pdf(
     margins: str = "normal",
     showGridlines: bool = True
 ):
-    if not os.path.exists(filePath):
+    if fileId:
+        file_path = os.path.join(UPLOAD_DIR, os.path.basename(fileId))
+    else:
+        file_path = filePath
+        
+    if not file_path or not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
         
     # Generate unique PDF filename
-    dir_name = os.path.dirname(filePath)
-    base_name = os.path.basename(filePath)
+    dir_name = os.path.dirname(file_path)
+    base_name = os.path.basename(file_path)
     pdf_filename = os.path.splitext(base_name)[0] + ".pdf"
     pdf_path = os.path.join(dir_name, pdf_filename)
     
     try:
         # Convert Excel to PDF
         success = convert_excel_to_pdf(
-            excel_path=filePath,
+            excel_path=file_path,
             pdf_path=pdf_path,
             active_sheet_name=sheetName,
             orientation=orientation,

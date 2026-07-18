@@ -144,6 +144,7 @@ function App() {
       
       setFile({
         filePath: data.filePath,
+        fileId: data.fileId,
         filename: data.filename,
         metadata: data.metadata
       });
@@ -201,6 +202,7 @@ function App() {
         body: JSON.stringify({
           prompt: userPrompt,
           filePath: file.filePath,
+          fileId: file.fileId,
           chatHistory: updatedHistory.slice(-5) // Send short recent context
         })
       });
@@ -265,7 +267,7 @@ function App() {
     if (!file) return;
     try {
       setIsLoading(true);
-      const url = `${API_BASE}/api/download?filePath=${encodeURIComponent(file.filePath)}`;
+      const url = `${API_BASE}/api/download?fileId=${encodeURIComponent(file.fileId || '')}&filePath=${encodeURIComponent(file.filePath || '')}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error("Download failed");
       const blob = await response.blob();
@@ -295,7 +297,8 @@ function App() {
       setShowPrintModal(false);
       
       const queryParams = new URLSearchParams({
-        filePath: file.filePath,
+        filePath: file.filePath || '',
+        fileId: file.fileId || '',
         sheetName: activeSheetName,
         orientation: printOptions.orientation,
         pageSize: printOptions.pageSize,
